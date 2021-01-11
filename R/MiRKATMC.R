@@ -1,5 +1,5 @@
 #' The Microbiome Regression-based Kernel Association Test for multi-categorical
-#' (npminal or ordinal) data
+#' (nominal or ordinal) data
 #'
 #'  MiRKATMC is based on the baseline-category logit model for nominal data or
 #'  the proportional odds model for ordinal data, which is able to deal with
