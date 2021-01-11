@@ -17,4 +17,6 @@ Imports:
     mclogit,
     harmonicmeanp,
     Matrix,
-    MASS
+    MASS,
+    PearsonDS
+RoxygenNote: 7.1.1

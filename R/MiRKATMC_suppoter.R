@@ -1,4 +1,4 @@
-get_D_GLM <- function(mu, J){
+get_D_GLM <- function(mu, J, nSam){
   ## reference level should be put in the last column
   d <- rep(0, (J-1)*nSam)
   n <- 1
@@ -37,7 +37,7 @@ get_matrix_W <- function(W, J){
 }
 
 
-get_V_POM <- function(mu, J){
+get_V_POM <- function(mu, J, nSam){
   ## reference level should be put in the last column
   vv <- rep(0, (J - 1) * nSam)
   vc <- rep(0, sum(1: (J - 2)) * nSam)
@@ -80,7 +80,7 @@ get_V_POM <- function(mu, J){
 
 
 
-blockdiag.prod <- function(A, B){
+blockdiag.prod <- function(A, B, nSam){
   ## A and B should be block diagonal matrix, stored in form of list containing
   ## only upper triangle (because here we are dealing with symmetric matrix)
   ## A should be a row vector, B should be square matrix
@@ -104,7 +104,7 @@ blockdiag.prod <- function(A, B){
   return(out)
 }
 
-matrixlist.prod <- function(A, B, type){
+matrixlist.prod <- function(A, B, type, nSam){
   ## product of two 'vectors' in form of list
   ## type 1 represents a row (1*n) times a column (n*1)
   ## type 2 represents a column (n*1) times a row (1*n)
@@ -150,12 +150,12 @@ matrixlist.prod <- function(A, B, type){
   }
 }
 
-quickInverse <- function(M, dimen){
+quickInverse <- function(M, dimen, nSam){
   ## suppose M is a square matrix
   length.M <- length(M)
 
   if (length.M != 3){
-    Ai <- quickInverse.1011(M[c(1: sum(1:(dimen - 2)))], dimen - 1)
+    Ai <- quickInverse(M[c(1: sum(1:(dimen - 2)))], dimen - 1, nSam)
   }else {
     # Ai <- diag(1/diag(A))
     Ai <- list(w11 = 1/unlist(M[1]))
@@ -168,11 +168,11 @@ quickInverse <- function(M, dimen){
   # BI <- -Ai * B * DI
   # AI <- Ai - BI * B * Ai
   # MI <- list(AI = AI, BI = BI, DI = DI)
-  BAi <- blockdiag.prod(B, Ai)
+  BAi <- blockdiag.prod(B, Ai, nSam)
   DI <- list()
-  DI[[paste0('w', dimen, dimen)]] <- 1/(D - unlist(matrixlist.prod(BAi, B, type = 1)))
-  BI <- lapply(matrixlist.prod(BAi, DI, type = 3), function(x) -1 * x)
-  AI <- mapply('-', Ai, matrixlist.prod(BI, BAi, type = 2), SIMPLIFY = F)
+  DI[[paste0('w', dimen, dimen)]] <- 1/(D - unlist(matrixlist.prod(BAi, B, type = 1, nSam)))
+  BI <- lapply(matrixlist.prod(BAi, DI, type = 3, nSam), function(x) -1 * x)
+  AI <- mapply('-', Ai, matrixlist.prod(BI, BAi, type = 2, nSam), SIMPLIFY = F)
   MI <- c(AI, BI, DI)
   return(MI)
 }
@@ -197,7 +197,7 @@ setupRandomFormula <- function(formula){
 }
 
 
-get_Z <- function(Z, id){
+get_Z <- function(Z, id, nSam){
   id <- factor(id)
   levels.id <- levels(id)
   nclusters <- length(levels.id)

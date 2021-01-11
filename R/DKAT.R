@@ -64,7 +64,7 @@ shape=4/m3^2
 scale=sqrt(m2)*m3/2
 location=m1-2*sqrt(m2)/m3
 PIIIpars=list(shape,location,scale)
-pv=1-ppearsonIII(Fstar, params=PIIIpars)
+pv=1- PearsonDS::ppearsonIII(Fstar, params=PIIIpars)
 # return(list(pv, Fstar, PIIIpars))
 if (is.na(pv)) {pv=1}  ## usually happens if var=0 in the denominator
 return(pv)

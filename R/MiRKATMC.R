@@ -1,4 +1,25 @@
-
+#' The Microbiome Regression-based Kernel Association Test for multi-categorical
+#' (npminal or ordinal) data
+#'
+#'  MiRKATMC is based on the baseline-category logit model for nominal data or
+#'  the proportional odds model for ordinal data, which is able to deal with
+#'  independent and clustered/longitudinal data.
+#' @import stats
+#' @importFrom Matrix Diagonal Matrix
+#' @param formula the model formula with fixed effects only. The response should be
+#' a factor.
+#' @param data an optional data frame, ...
+#' @param data.type either 'nominal' or 'ordinal'
+#' @param Ks a kernel or a list of kernels
+#' @param id an optional vector for subjects or clusters. Default is NULL for
+#' independent response. It is required when slope is not null.
+#' @param slope an optional vector for the random slope (e.g. time points).
+#' Default si NULL.
+#'
+#' @return p value
+#' @export
+#'
+#' @examples
 MiRKATMC <- function(formula, data, data.type, Ks, id = NULL, slope = NULL){
   if (missing(data)) {
     data <- environment(formula)
@@ -78,16 +99,16 @@ inner.GLM.null <- function(formula, data){
 
   mu.hat <- matrix(fit$fitted.values, ncol = J, byrow = T)[, c(2:J, 1)]
   D <- get_D_GLM(mu.hat, J, nSam)
-  V <- Matrix::Matrix(0, nrow = nSam * (J-1), ncol = nSam)
+  V <- Matrix(0, nrow = nSam * (J-1), ncol = nSam)
   V[cbind(c(1:(nSam * (J-1))), rep(1:nSam, J-1))] <- c(mu.hat[, 1: (J-1)])
   V <- Diagonal(x = c(mu.hat[, 1: (J-1)])) - tcrossprod(V)
   VI <- chol2inv(chol(V))
   Y <- matrix(1/D * VI %*% c(y.matrix[, 2:J] - mu.hat[, 1:(J-1)]), ncol = J - 1)
   KY <- tcrossprod(Y)
-    # Vb <- fit.mb$VarCov$`1`
+    # Vb <- fit$VarCov$`1`
     # Z
     # ZVbZ <- kronecker(Vb, tcrossprod(Z))
-    # rf <- c(matrix(unlist(fit.mb$random.effects), ncol = J - 1, byrow = T))
+    # rf <- c(matrix(unlist(fit$random.effects), ncol = J - 1, byrow = T))
     # Zb.hat <- kronecker(diag(1, J - 1), Z) %*% rf
     # res <- D * c(y.matrix[, 2:J] - mu.hat[, 1:(J-1)]) + Zb.hat
     # WI <- t(D * t(D * V))
@@ -115,7 +136,7 @@ inner.GLM.random.null <- function(formula, id, slope, data){
   random <- setupRandomFormula(random)
   rt <- terms(random$formula)
   Z <- model.matrix(rt, data)
-  Z <- get_Z(Z, data[, rt$groups])
+  Z <- get_Z(Z, data[, rt$groups], nSam)
 
   if (fit$response.type == 'factor'){
     J <- nlevels(y)
@@ -128,14 +149,15 @@ inner.GLM.random.null <- function(formula, id, slope, data){
   }
 
   if (is.null(slope)){
-    Vb <- fit.mb$VarCov$`1`
+    Vb <- fit$VarCov$`1`
     ZVbZ <- kronecker(Vb, tcrossprod(Z))
   }
   else {
-    Vb <- fit.mb$VarCov$`1`[order(rep(seq(1, J-1), 2)), order(rep(seq(1, J-1), 2))]
+    Vb <- fit$VarCov$`1`[order(rep(seq(1, J-1), 2)), order(rep(seq(1, J-1), 2))]
     to.split <- kronecker(matrix(1:(J-1)^2, J-1, byrow = TRUE), matrix(1, 2, 2))
     Vb.list <- lapply(split(Vb, to.split), matrix, nr = 2)
-    Vb.list <- mapply(function(x){kronecker(diag(n), x)}, Vb.list, SIMPLIFY = F)
+    nclusters <- length(unique(data[, rt$groups]))
+    Vb.list <- mapply(function(x){kronecker(diag(nclusters), x)}, Vb.list, SIMPLIFY = F)
     sqrt.len <- sqrt(length(Vb.list))
     Vb.m <- do.call(cbind, Vb.list[1: sqrt.len])
     Vb.list <- Vb.list[-(1: sqrt.len)]
@@ -147,7 +169,7 @@ inner.GLM.random.null <- function(formula, id, slope, data){
     Z.k <- kronecker(diag(J-1), Z)
     ZVbZ <- Z.k %*% Vb.m %*% t(Z.k)
   }
-  rf <- c(matrix(unlist(fit.mb$random.effects), ncol = J - 1, byrow = T))
+  rf <- c(matrix(unlist(fit$random.effects), ncol = J - 1, byrow = T))
   Zb.hat <- kronecker(diag(1, J - 1), Z) %*% rf
 
   mu.hat <- matrix(fit$fitted.values, ncol = J, byrow = T)[, c(2:J, 1)]
@@ -175,6 +197,11 @@ inner.POM.null <- function(formula, data){
   fit <- MASS::polr(formula, data, method = 'logistic')
   y <- eval(as.character(formula)[2], data)
 
+  J <- nlevels(y)
+  I <- diag(J)
+  dimnames(I) <- list(levels(y), levels(y))
+  y.matrix <- t(I[, y])
+
   pi.hat <- fit$fitted.values
   A <- matrix(1, nrow = J-1, ncol = J-1)
   A[upper.tri(A)] <- 0
@@ -192,6 +219,11 @@ inner.POM.random.null <- function(formula, id, slope, data){
   X <- model.matrix(formula, data)
   nSam <- dim(X)[1]
   y <- eval(as.character(formula)[2], data)
+
+  J <- nlevels(y)
+  I <- diag(J)
+  dimnames(I) <- list(levels(y), levels(y))
+  y.matrix <- t(I[, y])
 
   if (is.null(slope)){
     rf <- sprintf('(1 | %s)',
@@ -211,7 +243,7 @@ inner.POM.random.null <- function(formula, id, slope, data){
     random <- setupRandomFormula(random)
     rt <- terms(random$formula)
     Z <- model.matrix(rt, data)
-    Z <- get_Z(Z, data[, rt$groups])
+    Z <- get_Z(Z, data[, rt$groups], nSam)
   } else {
     Z <- t(fit$Zt)
   }
@@ -219,12 +251,12 @@ inner.POM.random.null <- function(formula, id, slope, data){
   Zb.hat <- rep(Z %*% fit$ranef, J - 1)
   ZVbZ <- kronecker(diag(J - 1), Z %*% fit$condVar %*% t(Z))
 
-  X.new <- cbind(bdiag(replicate(J - 1, rep(1, nSam), simplify = F)),
+  X.new <- cbind(kronecker(diag(J - 1), rep(1, nSam)),
                  kronecker(rep(1, J - 1), -X[, -1]))
   eta.hat <- X.new %*% fit$coefficients - Zb.hat
   mu.hat <- matrix(exp(eta.hat)/(1 + exp(eta.hat)), ncol = J-1)
-  V <- get_V_POM(mu.hat, J = J)
-  D <- quickInverse(V, dimen = J)
+  V <- get_V_POM(mu.hat, J = J, nSam)
+  D <- quickInverse(V, dimen = J, nSam)
   D.matrix <- get_matrix_W(D, J = J)
 
   A <- matrix(1, nrow = J-1, ncol = J-1)
