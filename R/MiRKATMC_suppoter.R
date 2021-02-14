@@ -1,12 +1,11 @@
 get_D_GLM <- function(mu, J, nSam){
-  ## reference level should be put in the last column
+  ## reference level should be put in the first column
   d <- rep(0, (J-1)*nSam)
   n <- 1
-  for (j in c(1:(J-1))){
+  for (j in c(2:J)){
     for (i in c(1:nSam)) {
-      # num <- 1/(mu[i,j]*(1-mu[i,j]))
-      # num <- 1/(mu[i,j])
-      num <- (mu[i,j] + mu[i,J])/(mu[i,j]*mu[i,J])
+      # num <- (mu[i,j] + mu[i,J])/(mu[i,j]*mu[i,J])
+      num <- (mu[i,j] + mu[i,1])/(mu[i,j]*mu[i,1])
       d[n] <- num
       n = n + 1
     }
@@ -198,12 +197,18 @@ setupRandomFormula <- function(formula){
 
 
 get_Z <- function(Z, id, nSam){
+  # browser()
   id <- factor(id)
   levels.id <- levels(id)
   nclusters <- length(levels.id)
-  Z.m <- Matrix(0, nrow = nSam, ncol = dim(Z)[2] * nclusters)
-  colnames(Z.m) <- rep(levels.id, dim(Z)[2])
-  loc <- unlist(sapply(id, function(x){which(levels.id == x)}))
-  Z.m[cbind(rep(1: nSam, dim(Z)[2]), rep(loc, dim(Z)[2]))] <- c(Z)
+  nvar <- dim(Z)[2]
+  Z.m <- Matrix(0, nrow = nSam, ncol = nvar * nclusters)
+  loc_Z.m <- matrix(seq_len(nclusters * nvar), nrow = nvar)
+  colnames(loc_Z.m) <- levels.id
+  loc <- c(loc_Z.m[, id])
+  # loc <- unlist(sapply(id, function(x){which(colnames_Z.m == x)}))
+  Z.m[cbind(rep(1:nSam, each = nvar), c(loc))] <- c(t(Z))
+
+  # Z.m[cbind(rep(1: nSam, nvar), rep(loc, nvar))] <- c(Z)
   return(Z.m)
 }

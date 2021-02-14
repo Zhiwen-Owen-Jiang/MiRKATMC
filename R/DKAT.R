@@ -1,4 +1,4 @@
-library(PearsonDS)
+# library(PearsonDS)
 
 ## DKAT test
 ## Input: two n by n kernel matrix

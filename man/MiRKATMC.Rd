@@ -3,31 +3,53 @@
 \name{MiRKATMC}
 \alias{MiRKATMC}
 \title{The Microbiome Regression-based Kernel Association Test for multi-categorical
-(npminal or ordinal) data}
+(nominal or ordinal) data}
 \usage{
-MiRKATMC(formula, data, data.type, Ks, id = NULL, slope = NULL)
+MiRKATMC(formula, data.type, Ks, random = NULL, data = NULL)
 }
 \arguments{
-\item{formula}{the model formula with fixed effects only. The response should be
+\item{formula}{The model formula with fixed effects only. The response should be
 a factor.}
 
-\item{data}{an optional data frame, ...}
+\item{data.type}{Either 'nominal' or 'ordinal'.}
 
-\item{data.type}{either 'nominal' or 'ordinal'}
+\item{Ks}{A kernel matrix or a list of kernels.}
 
-\item{Ks}{a kernel or a list of kernels}
+\item{random}{An optional formula for the random effect (default is NULL).
+Currently, only models with random intercepts or with random intercepts and
+slopes are supported.}
 
-\item{id}{an optional vector for subjects or clusters. Default is NULL for
-independent response. It is required when slope is not null.}
-
-\item{slope}{an optional vector for the random slope (e.g. time points).
-Default si NULL.}
+\item{data}{An optional data frame (default is NULL).}
 }
 \value{
-p value
+A p value or a list of p values corresponding to multiple kernels. If
+multiple kernels provided, the omnibus test to combine multiple p values
+will be conducted and returns the p value as \code{omnibus.HMP}.
 }
 \description{
-MiRKATMC is based on the baseline-category logit model for nominal data or
- the proportional odds model for ordinal data, which is able to deal with
- independent and clustered/longitudinal data.
+\code{MiRKATMC} is able to test for the association between multi-categorical
+ outcomes (nominal and ordinal) and microbiome, for both independent and
+ clustered/longitudinal data.
+}
+\examples{
+test.data <- data.frame(outcome = as.factor(sample(4, 100, replace = TRUE)),
+ID = gl(20, 5), time = rep(1:5, 20), age = rnorm(n = 100, mean = 30, sd = 5),
+sex = rbinom(100, 1, 1/2))
+D <- matrix(rbinom(10000, 2, 0.05), 100, 100)
+K <- crossprod(D) # kernel matrix
+
+# independent nominal data
+MiRKATMC(formula = outcome ~ sex + age, data = test.data, data.type = 'nominal',
+Ks = K)
+
+# clustered nominal data
+MiRKATMC(formula = outcome ~ sex + age, data = test.data, data.type = 'nominal',
+Ks = K, random = ~ 1 | ID)
+
+# longitudinal nominal data
+MiRKATMC(formula = outcome ~ sex + age, data = test.data, data.type = 'nominal',
+Ks = K, random = ~ 1 + time | ID)
+}
+\author{
+Zhiwen Jiang
 }
