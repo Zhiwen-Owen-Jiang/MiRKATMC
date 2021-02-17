@@ -85,7 +85,7 @@ MiRKATMC <- function(formula, data.type, Ks, random = NULL, data = NULL){
 
 
 inner.GLM.null <- function(formula, data = NULL){
-  browser()
+  # browser()
   # debug(mclogit::mblogit)
   invisible(utils::capture.output(fit <- mclogit::mblogit(formula, data, na.action = 'na.fail')))
   X <- model.matrix(formula, fit$model)
@@ -94,13 +94,13 @@ inner.GLM.null <- function(formula, data = NULL){
   J <- ncol(y.matrix)
 
   mu.hat <- matrix(fit$fitted.values, ncol = J, byrow = T)
-  D <- get_D_GLM(mu.hat, J, nSam)
-  mu.hat <- mu.hat[, 2:J]
+  D <- c((mu.hat[, 2:J] + mu.hat[, 1]) / (mu.hat[, 2:J] * mu.hat[, 1]))
+  mu.hat <- c(mu.hat[, 2:J])
   V <- Matrix(0, nrow = nSam * (J-1), ncol = nSam)
-  V[cbind(c(1:(nSam * (J-1))), rep(1:nSam, J-1))] <- c(mu.hat)
-  V <- Diagonal(x = c(mu.hat)) - Matrix::tcrossprod(V)
+  V[cbind(c(1:(nSam * (J-1))), rep(1:nSam, J-1))] <- mu.hat
+  V <- Diagonal(x = mu.hat) - Matrix::tcrossprod(V)
   VI <- chol2inv(chol(V))
-  Y <- matrix(1/D * VI %*% c(y.matrix[, 2:J] - mu.hat), ncol = J - 1)
+  Y <- matrix(1/D * VI %*% (c(y.matrix[, 2:J]) - mu.hat), ncol = J - 1)
   KY <- tcrossprod(Y)
   return(KY)
 }
@@ -113,7 +113,8 @@ inner.GLM.random.null <- function(formula, random, data = NULL){
   arg <- list(formula = formula, data = data, random = random, na.action = 'na.fail',
               method = 'MQL')
   # debug(mclogit::mblogit)
-  invisible(utils::capture.output(fit <- do.call(mclogit::mblogit, arg)))
+  cat('Fitting the null model...\n')
+  fit <- do.call(mclogit::mblogit, arg)
   # browser()
   if (is.null(data)) data <- fit$model
   X <- model.matrix(formula, data)
@@ -153,11 +154,12 @@ inner.GLM.random.null <- function(formula, random, data = NULL){
   # X.matrix <- kronecker(Diagonal(J-1), X)
   mu.hat <- matrix(fit$fitted.values, ncol = J, byrow = T)
   # eta.hat <- matrix(fit$linear.predictors, ncol = J, byrow = T)
-  D <- get_D_GLM(mu.hat, J, nSam)
+  D <- c((mu.hat[, 2:J] + mu.hat[, 1]) / (mu.hat[, 2:J] * mu.hat[, 1]))
+  mu.hat <- c(mu.hat[, 2:J])
   V <- Matrix(0, nrow = nSam * (J-1), ncol = nSam)
-  V[cbind(c(1:(nSam * (J-1))), rep(1:nSam, J-1))] <- c(mu.hat[, 2:J])
-  V <- Diagonal(x = c(mu.hat[, 2:J])) - Matrix::tcrossprod(V)
-  res <- D * c(y.matrix[, 2:J] - mu.hat[, 2:J]) # MQL
+  V[cbind(c(1:(nSam * (J-1))), rep(1:nSam, J-1))] <- mu.hat
+  V <- Diagonal(x = mu.hat) - Matrix::tcrossprod(V)
+  res <- D * (c(y.matrix[, 2:J]) - mu.hat) # MQL
   # res <- D * c(y.matrix[, 2:J] - mu.hat[, 2:J]) + c(eta.hat[, 2:J]) -
   #   X.matrix %*% c(matrix(fit$coefficients, ncol = J - 1, byrow = T))
   WI <- Matrix::t(D * Matrix::t(D * V))
@@ -214,39 +216,70 @@ inner.POM.random.null <- function(formula, random, data = NULL){
   y.matrix <- model.matrix(y, data)
   J <- ncol(y.matrix)
 
-  if (is.null(fit$Zt)){
+  # if (is.null(fit$Zt)){
+  #   random <- setupRandomFormula(random)
+  #   rt <- terms(random$formula)
+  #   Z <- model.matrix(rt, data)
+  #   Z <- get_Z(Z, data[, random$groups], nSam)
+  # } else {
+  #   Z <- Matrix::t(fit$Zt)
+  # }
+
     random <- setupRandomFormula(random)
     rt <- terms(random$formula)
     Z <- model.matrix(rt, data)
     Z <- get_Z(Z, data[, random$groups], nSam)
-  } else {
-    Z <- Matrix::t(fit$Zt)
-  }
+    nlev <- fit$dims$nlev.gf
 
   # browser()
-  Zb.hat <- rep(Z %*% fit$ranef, J - 1)
+  ranef <- c(t(matrix(fit$ranef, nrow = nlev)))
+  # Zb.hat <- rep(Z %*% fit$ranef, J - 1)
+  Zb.hat <- rep(Z %*% ranef, J - 1)
   if(is.null(dim(fit$condVar))){
-    Vb <- Diagonal(length(fit$condVar), fit$condVar)
+    Vb <- Diagonal(nlev, fit$ST[[1]]^2)
   } else{
-    Vb <- fit$condVar
+    # Vb <- fit$condVar
+    ST <- fit$ST[[1]]
+    T.matrix <- diag(2)
+    T.matrix[2,1] <- ST[2,1]
+    S.matrix <- diag(diag(ST))
+    Vb <- kronecker(diag(nlev), tcrossprod(T.matrix %*% S.matrix))
   }
   ZVbZ <- kronecker(Diagonal(J - 1), Z %*% Vb %*% Matrix::t(Z))
 
-  X.new <- cbind(kronecker(Diagonal(J - 1), rep(1, nSam)),
+  X.new <- cbind(kronecker(diag(J - 1), rep(1, nSam)),
                  kronecker(rep(1, J - 1), -X[, -1]))
   eta.hat <- X.new %*% fit$coefficients - Zb.hat
   mu.hat <- matrix(exp(eta.hat)/(1 + exp(eta.hat)), ncol = J-1)
-  V <- get_V_POM(mu.hat, J = J, nSam)
-  D <- quickInverse(V, dimen = J, nSam)
-  D.matrix <- get_matrix_W(D, J = J)
+
+  # browser()
+  # start1 <- Sys.time()
+  # V <- get_V_POM(mu.hat, J = J, nSam)
+  # D <- quickInverse(V, dimen = J, nSam)
+  # D.matrix <- get_matrix_W(D, J = J)
+  # end1 <- Sys.time()
+  # end1 - start1
+  # browser()
 
   A <- matrix(1, nrow = J-1, ncol = J-1)
   A[upper.tri(A)] <- 0
   A <- kronecker(A, Diagonal(nSam, 1))
   y.tilde <- matrix(A %*% c(y.matrix[, 1: (J-1)]), ncol = J-1)
 
-  res <- D.matrix %*% c(y.tilde - mu.hat) - Zb.hat
-  Sigma <- D.matrix + ZVbZ
+  # browser()
+  # start1 <- Sys.time()
+  pi.hat <- c(mu.hat[, 1], c(mu.hat[, 2:(J - 1)] - mu.hat[, 1:(J - 2)]))
+  V <- Matrix(0, nrow = nSam * (J-1), ncol = nSam)
+  V[cbind(c(1:(nSam * (J-1))), rep(1:nSam, J-1))] <- pi.hat
+  V <- Diagonal(x = pi.hat) - Matrix::tcrossprod(V)
+  V <- A %*% V %*% Matrix::t(A)
+  VI <- chol2inv(chol(V))
+  # end1 <- Sys.time()
+  # end1 - start1
+  # browser()
+
+  res <- VI %*% c(y.tilde - mu.hat) - Zb.hat
+  Sigma <- VI + ZVbZ
   SigmaI <- chol2inv(chol(Sigma))
   Y <- matrix(SigmaI %*% res, ncol = J - 1)
   KY <- tcrossprod(Y)
