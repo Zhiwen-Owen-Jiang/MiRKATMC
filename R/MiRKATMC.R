@@ -72,6 +72,9 @@ MiRKATMC <- function(formula, data.type, Ks, random = NULL, data = NULL){
   }
 
   pvs <- mapply(function(x){DKAT(x, KY)}, Ks)
+  if (is.null(names(pvs))){
+    names(pvs) <- paste0('kernel', seq(length(pvs)))
+  }
   # browser()
   if (length(pvs) > 1){
     p.value.combined <- harmonicmeanp::p.hmp(p = pvs, w = NULL, L = length(pvs),
@@ -111,7 +114,7 @@ inner.GLM.null <- function(formula, data = NULL){
 inner.GLM.random.null <- function(formula, random, data = NULL){
   # browser()
   arg <- list(formula = formula, data = data, random = random, na.action = 'na.fail',
-              method = 'MQL')
+              method = 'MQL', estimator = 'REML')
   # debug(mclogit::mblogit)
   cat('Fitting the null model...\n')
   fit <- do.call(mclogit::mblogit, arg)
@@ -225,11 +228,11 @@ inner.POM.random.null <- function(formula, random, data = NULL){
   #   Z <- Matrix::t(fit$Zt)
   # }
 
-    random <- setupRandomFormula(random)
-    rt <- terms(random$formula)
-    Z <- model.matrix(rt, data)
-    Z <- get_Z(Z, data[, random$groups], nSam)
-    nlev <- fit$dims$nlev.gf
+  random <- setupRandomFormula(random)
+  rt <- terms(random$formula)
+  Z <- model.matrix(rt, data)
+  Z <- get_Z(Z, data[, random$groups], nSam)
+  nlev <- fit$dims$nlev.gf
 
   # browser()
   ranef <- c(t(matrix(fit$ranef, nrow = nlev)))
