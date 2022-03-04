@@ -7,6 +7,7 @@ The Microbiome Regression-based Kernel Association Test for multi-categorical (n
 devtools::install_github("Zhiwen-Owen-Jiang/MiRKATMC")
 ```
 ## Usage
+We also provided a shiny app which can be accessed at [shiny_MiRKATMC](https://zhiwen-owen-jiang.shinyapps.io/shiny_MiRKATMC/).
 ```{r}
 library(MiRKATMC)
 
