@@ -1,0 +1,13 @@
+name: shiny_MiRKATMC
+title: shiny_MiRKATMC
+username:
+account: zhiwen-owen-jiang
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 5781226
+bundleId: 5642632
+url: https://zhiwen-owen-jiang.shinyapps.io/shiny_MiRKATMC/
+when: 1646408107.06163
+lastSyncTime: 1646408107.06165
+asMultiple: FALSE
+asStatic: FALSE

@@ -41,9 +41,19 @@ ui <- fluidPage(
       actionButton(inputId = 'go', label = 'Go')
     ),
 
-      mainPanel(tableOutput('results'))
+      mainPanel(
+        h4('P-value(s)'),
+        tableOutput('results'),
+        br(),
+        h4('FAQ'),
+        h5('What is the correct form of the formula?'),
+        textOutput('answer1'),
+        h5('What is the correct form of the kernel matrix and the dataset?'),
+        textOutput('answer2'),
+        h5('How long will the program be running?'),
+        textOutput('answer3')
+      )
   )
-
 )
 
 
@@ -74,7 +84,25 @@ server <- function(input, output){
     return(t(pvalues))
   })
 
+  output$answer1 <- renderText({paste('The formula for fixed effects is the same as that used in lm(), while
+                   the formula for random effects is either ~ 1 | ID for random intercept model
+                  or ~ 1 + time | ID for random slope model. Other more complex formulas are not
+                   available for this version.')})
+  output$answer2 <- renderText({paste('The kernel matrix should be a squared matrix with dimention N,
+                                      where N is the total number of samples. The input can also be a
+                                      list of kernel matrices. The dataset should be a data.frame with
+                                      each column being a covariate. Intercept (i.e. a column of 1)
+                                      should not be in the dataset. No missing value is allowed.')})
+  output$answer3 <- renderText({paste('In general, the running time depends on the sample size and
+                                      including random effects or not. For analysis without random
+                                      effects, the running time is usually less than 1 second.
+                                      However, for analysis with random effect, it may need several
+                                      seconds. Sometimes if the algorithm cannot converge, it may take
+                                      a long time and fail in the end.')})
+
 }
+
+
 
 shinyApp(ui, server)
 
