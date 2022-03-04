@@ -29,4 +29,4 @@ MiRKATMC(formula = outcome ~ age, random = ~ 1 | ID, data.type = 'nominal', Ks =
 MiRKATMC(formula = outcome ~ age, random = ~ 1 + time | ID, data.type = 'ordinal', Ks = K_no_name, data = test.data)
 ```
 ## Getting help
-Please email [Owen Jiang](owenjf@live.unc.edu).
+Please email Owen Jiang <owenjf@live.unc.edu>.
