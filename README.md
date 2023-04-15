@@ -31,3 +31,6 @@ MiRKATMC(formula = outcome ~ age, random = ~ 1 + time | ID, data.type = 'ordinal
 ```
 ## Getting help
 Please email Owen Jiang <owenjf@live.unc.edu>.
+
+## Citation
+Jiang Z, He M, Chen J, Zhao N, Zhan X. MiRKAT-MC: A Distance-Based Microbiome Kernel Association Test With Multi-Categorical Outcomes. Front Genet. 2022 Apr 1;13:841764. doi: 10.3389/fgene.2022.841764. 
